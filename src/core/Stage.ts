@@ -468,6 +468,8 @@ export class Stage {
       root.update(this.deltaTime, root.clippingRect);
     }
 
+    this.txManager.frame++;
+
     // Process some textures asynchronously but don't block the frame
     // Use a background task to prevent frame drops
     if (this.txManager.hasUpdates() === true) {

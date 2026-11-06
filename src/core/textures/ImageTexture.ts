@@ -101,9 +101,9 @@ export interface ImageTextureProps {
   /**
    * Maximum number of times to retry loading the image if it fails.
    *
-   * @default 5
+   * @default the stage's `maxRetryCount` setting
    */
-  maxRetryCount?: number;
+  maxRetryCount?: number | null;
 }
 
 export interface ImageResponse {
@@ -139,7 +139,10 @@ export class ImageTexture extends Texture {
 
     this.platform = txManager.platform;
     this.props = props;
-    this.maxRetryCount = props.maxRetryCount as number;
+    // Only an explicit per-texture count overrides the stage's.
+    if (props.maxRetryCount !== null) {
+      this.maxRetryCount = props.maxRetryCount;
+    }
   }
 
   override async getTextureSource(): Promise<TextureData> {
@@ -278,7 +281,10 @@ export class ImageTexture extends Texture {
       sy: props.sy ?? null,
       sw: props.sw ?? null,
       sh: props.sh ?? null,
-      maxRetryCount: props.maxRetryCount ?? 5,
+      // Unset stays unset, so the Texture keeps the stage's maxRetryCount from
+      // its constructor. The `src` setter passes none, so a hard default of 5
+      // meant the app's setting never reached a single image.
+      maxRetryCount: props.maxRetryCount ?? null,
     };
   }
 

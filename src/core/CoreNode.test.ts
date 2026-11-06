@@ -22,7 +22,10 @@ import { CoreNode, type CoreNodeProps, UpdateType } from './CoreNode.js';
 import { Stage } from './Stage.js';
 import { CoreRenderer } from './renderers/CoreRenderer.js';
 import { mock } from 'vitest-mock-extended';
-import { type TextureOptions } from './CoreTextureManager.js';
+import {
+  type CoreTextureManager,
+  type TextureOptions,
+} from './CoreTextureManager.js';
 import { createBound } from './lib/utils.js';
 import { ImageTexture } from './textures/ImageTexture.js';
 
@@ -79,6 +82,7 @@ describe('CoreNode', () => {
       state: 'loaded',
     },
     renderer: mock<CoreRenderer>() as CoreRenderer,
+    txManager: mock<CoreTextureManager>({ frame: 0 }) as CoreTextureManager,
   });
 
   describe('set color()', () => {

@@ -45,6 +45,9 @@ interface FontFaceSetWithAdd extends FontFaceSet {
   add(font: FontFace): this;
 }
 
+/** Deadline for one image request, in milliseconds. */
+const FETCH_TIMEOUT_MS = 15000;
+
 export class WebPlatform extends Platform {
   private useImageWorker: boolean;
   private imageWorkerManager: ImageWorkerManager | null = null;
@@ -212,6 +215,26 @@ export class WebPlatform extends Platform {
             reject(xhr.statusText);
           }
         }
+      };
+      // A request that never completes (seen on tvOS NativeScript: the server
+      // answered, the XHR never heard back) would hold its image forever, never
+      // loaded and never retried. Past the deadline it fails like a network
+      // error, so the texture retries.
+      const timer = setTimeout(() => {
+        xhr.onreadystatechange = null;
+        try {
+          xhr.abort();
+        } catch {
+          // rejected below either way
+        }
+        reject(new Error(`Timed out loading ${url}`));
+      }, FETCH_TIMEOUT_MS);
+      const settle = xhr.onreadystatechange;
+      xhr.onreadystatechange = function (event) {
+        if (xhr.readyState === 4) {
+          clearTimeout(timer);
+        }
+        settle.call(this, event);
       };
       xhr.open('GET', url, true);
       xhr.send(null);

@@ -1546,6 +1546,12 @@ export class CoreNode extends EventEmitter {
 
     const previous = this.renderState;
     this.renderState = renderState;
+    // An image coming on screen uploads ahead of preload-margin images.
+    const texture = this.props.texture;
+    if (renderState === CoreNodeRenderState.InViewport && texture) {
+      texture.lastOnScreen = this.stage.txManager.frame;
+      this.stage.txManager.prioritize(texture);
+    }
     const event = CoreNodeRenderStateMap.get(renderState);
     assertTruthy(event);
     this.emit(event, {

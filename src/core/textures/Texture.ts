@@ -182,6 +182,16 @@ export abstract class Texture extends EventEmitter {
    * is loaded/freed. Set to 0 when texture is not loaded.
    */
   public retryCount = 0;
+  /** Earliest time of the next load attempt after a failure. */
+  public retryAt = 0;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  static RETRY_FIRST_MS = 1000;
+  static RETRY_MAX_MS = 60000;
+  /**
+   * The texture manager frame at which a node showing this texture last came
+   * on screen: orders the upload queue and memory cleanup.
+   */
+  public lastOnScreen = -Infinity;
   public maxRetryCount: number;
 
   /**
@@ -322,6 +332,20 @@ export abstract class Texture extends EventEmitter {
       // We've exceeded the max retry count, do not attempt to load again
       return;
     }
+    // Still inside the retry wait: a timer brings it back, and loads only if
+    // a node still wants the texture by then.
+    const wait = this.retryAt - Date.now();
+    if (wait > 0) {
+      if (this.retryTimer === null) {
+        this.retryTimer = setTimeout(() => {
+          this.retryTimer = null;
+          if (this.renderableOwners.length > 0) {
+            this.load();
+          }
+        }, wait);
+      }
+      return;
+    }
     this.txManager.loadTexture(this);
   }
 
@@ -430,6 +454,15 @@ export abstract class Texture extends EventEmitter {
       // this is used to compare against maxRetryCount, if set
       // to determine if we should try loading again
       this.retryCount += 1;
+      // The next attempt waits, doubling from 1s to 60s. Back-to-back retries
+      // spent the whole count in a few seconds of bad network, and the image
+      // then never loaded again for the session.
+      this.retryAt =
+        Date.now() +
+        Math.min(
+          Texture.RETRY_MAX_MS,
+          Texture.RETRY_FIRST_MS * 2 ** (this.retryCount - 1),
+        );
 
       queueMicrotask(this.releaseTask);
     } else if (state === 'loading') {

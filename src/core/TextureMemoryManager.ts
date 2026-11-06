@@ -248,14 +248,27 @@ export class TextureMemoryManager {
     // Skip null entries, mark cleaned textures as null for later defrag
     let currentMemUsed = this.memUsed;
 
-    for (let i = 0; i < this.loadedTextures.length; i++) {
+    // Least recently on screen first, not oldest loaded: oldest-first freed a
+    // home page's posters (loaded first, still one Back press away) before a
+    // page's that would never be seen again. A texture owned by a node is in
+    // view now, so its age counts from now. Cleanup is rare, so the sort is
+    // cheap next to the GPU memory it frees.
+    const now = this.stage.txManager.frame;
+    const candidates: Texture[] = [];
+    for (const texture of this.loadedTextures) {
+      if (!texture) continue; // Skip null entries from previous deletions
+      if (texture.renderableOwners.length > 0) {
+        texture.lastOnScreen = now;
+      }
+      candidates.push(texture);
+    }
+    candidates.sort((a, b) => a.lastOnScreen - b.lastOnScreen);
+
+    for (const texture of candidates) {
       // Early exit: target memory reached
       if (full === false && currentMemUsed < memTarget) {
         break;
       }
-
-      const texture = this.loadedTextures[i];
-      if (!texture) continue; // Skip null entries from previous deletions
 
       // Fast type check for cleanable textures
       const isCleanableType =

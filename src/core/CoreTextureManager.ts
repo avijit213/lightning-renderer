@@ -241,8 +241,32 @@ export class CoreTextureManager extends EventEmitter {
    *
    * @param texture - The texture to upload
    */
+  /**
+   * Frames drawn, advanced by the Stage: how recently a texture was on screen
+   * (upload order, memory cleanup order).
+   */
+  public frame = 0;
+
+  /**
+   * An image just came on screen: if its upload is queued, move it to the
+   * front, ahead of images preloading in the bounds margin.
+   */
+  prioritize(texture: Texture): void {
+    const i = this.uploadTextureQueue.indexOf(texture);
+    if (i > 0) {
+      this.uploadTextureQueue.splice(i, 1);
+      this.uploadTextureQueue.unshift(texture);
+    }
+  }
+
   enqueueUploadTexture(texture: Texture): void {
     if (this.uploadTextureQueue.includes(texture) === false) {
+      // On screen within the last ~second (it came into view while still
+      // fetching): upload it first.
+      if (this.frame - texture.lastOnScreen < 60) {
+        this.uploadTextureQueue.unshift(texture);
+        return;
+      }
       this.uploadTextureQueue.push(texture);
     }
   }
