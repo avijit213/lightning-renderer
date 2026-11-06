@@ -45,8 +45,14 @@ interface FontFaceSetWithAdd extends FontFaceSet {
   add(font: FontFace): this;
 }
 
-/** Deadline for one image request, in milliseconds. */
-const FETCH_TIMEOUT_MS = 15000;
+/**
+ * Deadline for one image request, in milliseconds. A poster is tens to a few
+ * hundred KB from a CDN, so a healthy request finishes well under a second;
+ * past 5s it has stalled, and the retry (1s, 2s, 4s...) recovers it sooner
+ * than waiting longer would. On a very slow link a large image that needs
+ * more than 5s will not load; raise this if that is seen on devices.
+ */
+const FETCH_TIMEOUT_MS = 5000;
 
 export class WebPlatform extends Platform {
   private useImageWorker: boolean;
